@@ -4,6 +4,7 @@ References
 - https://github.com/OlafenwaMoses/ImageAI/blob/master/imageai/Detection/README.md
 
 YOLOv3 model download: https://github.com/OlafenwaMoses/ImageAI/releases/download/1.0/yolo.h5
+TinyYOLOv3 model download: https://github.com/OlafenwaMoses/ImageAI/releases/download/1.0/yolo-tiny.h5
 """
 
 import cv2 as cv
@@ -21,7 +22,7 @@ BACK_SUB_THRESHOLD = 256
 FG_MASK_THRESHOLD = 0.0005
 # Object detection
 MIN_PERCENTAGE_PROB = 40
-DETECTION_SPEED = "fast" # Options: normal/fast/faster/fastest/flash
+DETECTION_SPEED = "normal" # Options: normal/fast/faster/fastest/flash
 
 # Subroutine for object detection executed on new thread
 def detect_objects(detector, custom, frame, results):
@@ -42,8 +43,10 @@ def main():
 
     # Set up ImageAI object detector
     detector = ObjectDetection()
-    detector.setModelTypeAsYOLOv3()
-    detector.setModelPath( "yolo.h5")
+    # detector.setModelTypeAsYOLOv3()
+    # detector.setModelPath( "yolo.h5")
+    detector.setModelTypeAsTinyYOLOv3()
+    detector.setModelPath( "yolo-tiny.h5")
     detector.loadModel(detection_speed=DETECTION_SPEED)
     custom = detector.CustomObjects(person=True, car=True, truck=True, motorcycle=True)
     results = {}
@@ -61,7 +64,7 @@ def main():
             break
 
         # Preprocess frame 
-        frame = cv.resize(frame, (640,360))
+        frame = cv.resize(frame, (480,270))
         processed_frame = cv.GaussianBlur(src=frame, ksize=(5,5), sigmaX=0)
         fgMask = backSub.apply(processed_frame)
         
@@ -82,7 +85,7 @@ def main():
                                             input_type="array",
                                             input_image=frame, 
                                             output_type="array", 
-                                            minimum_percentage_probability=50,
+                                            minimum_percentage_probability=MIN_PERCENTAGE_PROB,
                                             custom_objects = custom)
             results["returned_image"] = returned_image
             results["detections"] = detections
@@ -90,11 +93,13 @@ def main():
             _thread.start_new_thread(detect_objects, (detector, custom, frame, results,))
 
         # Display frames 
-        cv.imshow('Frame', processed_frame)
+        cv.imshow('Frame', frame)
         cv.imshow('FG Mask', fgMask)
         cv.imshow('Detection',results["returned_image"])
         
         keyboard = cv.waitKey(30)
+        if keyboard == ord("q"):
+            break
 
 if __name__ == "__main__":
     main()
