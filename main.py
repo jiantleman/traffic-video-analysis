@@ -7,7 +7,7 @@ YOLOv3 model download: https://github.com/OlafenwaMoses/ImageAI/releases/downloa
 TinyYOLOv3 model download: https://github.com/OlafenwaMoses/ImageAI/releases/download/1.0/yolo-tiny.h5
 """
 
-import cv2 as cv
+import cv2
 import numpy as np
 import argparse
 from imageai.Detection import ObjectDetection
@@ -23,6 +23,7 @@ FG_MASK_THRESHOLD = 0.0005
 # Object detection
 MIN_PERCENTAGE_PROB = 40
 DETECTION_SPEED = "normal" # Options: normal/fast/faster/fastest/flash
+############################################################################
 
 # Subroutine for object detection executed on new thread
 def detect_objects(detector, custom, frame, results):
@@ -38,22 +39,22 @@ def detect_objects(detector, custom, frame, results):
 def main():
     parser = argparse.ArgumentParser(description='This program shows how to use background subtraction methods provided by \
                                                 OpenCV. You can process both videos and images.')
-    parser.add_argument('--input', type=str, help='Path to a video or a sequence of image.', default='traffic.mp4')
+    parser.add_argument('--input', type=str, help='Path to a video or a sequence of image.', default='video/traffic.mp4')
     args = parser.parse_args()
 
     # Set up ImageAI object detector
     detector = ObjectDetection()
     # detector.setModelTypeAsYOLOv3()
-    # detector.setModelPath( "yolo.h5")
+    # detector.setModelPath( "model/yolo.h5")
     detector.setModelTypeAsTinyYOLOv3()
-    detector.setModelPath( "yolo-tiny.h5")
+    detector.setModelPath( "model/yolo-tiny.h5")
     detector.loadModel(detection_speed=DETECTION_SPEED)
     custom = detector.CustomObjects(person=True, car=True, truck=True, motorcycle=True)
     results = {}
 
     # Set up OpenCV background subtractor
-    backSub = cv.createBackgroundSubtractorMOG2(varThreshold = BACK_SUB_THRESHOLD, detectShadows=False)
-    capture = cv.VideoCapture(cv.samples.findFileOrKeep(args.input))
+    backSub = cv2.createBackgroundSubtractorMOG2(varThreshold = BACK_SUB_THRESHOLD, detectShadows=False)
+    capture = cv2.VideoCapture(cv2.samples.findFileOrKeep(args.input))
     if not capture.isOpened():
         print('Unable to open: ' + args.input)
         exit(0)
@@ -64,23 +65,23 @@ def main():
             break
 
         # Preprocess frame 
-        frame = cv.resize(frame, (480,270))
-        processed_frame = cv.GaussianBlur(src=frame, ksize=(5,5), sigmaX=0)
+        frame = cv2.resize(frame, (480,270))
+        processed_frame = cv2.GaussianBlur(src=frame, ksize=(5,5), sigmaX=0)
         fgMask = backSub.apply(processed_frame)
         
         # Threshold ratio of difference in entire image
         diffRatio = np.count_nonzero(fgMask)/fgMask.size
 
         # Display information
-        cv.rectangle(frame, (10, 2), (100,20), (255,255,255), -1)
-        cv.putText(frame, str(capture.get(cv.CAP_PROP_POS_FRAMES)), (15, 15),
-                    cv.FONT_HERSHEY_SIMPLEX, 0.5 , (0,0,0))
-        cv.rectangle(frame, (10, 22), (200,42), (255,255,255), -1)
-        cv.putText(frame, "Motion detected: "+ str(diffRatio>FG_MASK_THRESHOLD), (15, 37),
-                    cv.FONT_HERSHEY_SIMPLEX, 0.5 , (0,0,0))
+        cv2.rectangle(frame, (10, 2), (100,20), (255,255,255), -1)
+        cv2.putText(frame, str(capture.get(cv2.CAP_PROP_POS_FRAMES)), (15, 15),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5 , (0,0,0))
+        cv2.rectangle(frame, (10, 22), (200,42), (255,255,255), -1)
+        cv2.putText(frame, "Motion detected: "+ str(diffRatio>FG_MASK_THRESHOLD), (15, 37),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5 , (0,0,0))
 
         # Run object detection in new thread every 2 seconds
-        if capture.get(cv.CAP_PROP_POS_FRAMES) == 1:
+        if capture.get(cv2.CAP_PROP_POS_FRAMES) == 1:
             returned_image, detections = detector.detectObjectsFromImage(
                                             input_type="array",
                                             input_image=frame, 
@@ -89,15 +90,15 @@ def main():
                                             custom_objects = custom)
             results["returned_image"] = returned_image
             results["detections"] = detections
-        elif capture.get(cv.CAP_PROP_POS_FRAMES)%60 == 0:
+        elif capture.get(cv2.CAP_PROP_POS_FRAMES)%60 == 0:
             _thread.start_new_thread(detect_objects, (detector, custom, frame, results,))
 
         # Display frames 
-        cv.imshow('Frame', frame)
-        cv.imshow('FG Mask', fgMask)
-        cv.imshow('Detection',results["returned_image"])
+        cv2.imshow('Frame', frame)
+        cv2.imshow('FG Mask', fgMask)
+        cv2.imshow('Detection',results["returned_image"])
         
-        keyboard = cv.waitKey(30)
+        keyboard = cv2.waitKey(30)
         if keyboard == ord("q"):
             break
 
