@@ -39,7 +39,7 @@ def main():
     parser = argparse.ArgumentParser(description='This program combines video stabilization, motion detection, and object \
                                         detection to perform traffic video analysis.')
     parser.add_argument('--input', type=str, help='Path to input video.', default='video/10.avi')
-    parser.add_argument('--output', type=str, help='Path to save output.', default='output/10.avi')
+    parser.add_argument('--output', type=str, help='Path to save output.', default='output/10.mp4')
     parser.add_argument('--display', type=bool, help='Display analysis output.', default=False)
     args = parser.parse_args()
 
@@ -57,8 +57,9 @@ def main():
 
     # Set up OpenCV background subtractor
     backSub = cv2.createBackgroundSubtractorMOG2(varThreshold = BACK_SUB_THRESHOLD, detectShadows=False)
-
-    out = cv2.VideoWriter(args.output, cv2.VideoWriter_fourcc('M','J','P','G'),3,(960,540))
+    
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    out = cv2.VideoWriter(args.output, fourcc ,30,(960,540))
 
     while True:
         frame_num += 1
@@ -66,8 +67,6 @@ def main():
         if frame_processed is None:
             break
         frame_org = stream_org.read()
-        if (frame_num-1)%10 != 0:
-            continue
         # Resize frame 
         frame_stab = cv2.resize(frame_processed, FRAME_SIZE)
         frame_org = cv2.resize(frame_org, FRAME_SIZE)
@@ -78,16 +77,17 @@ def main():
         # 3. Calculate ratio of difference in entire image
         processed_frame = cv2.GaussianBlur(src=frame_stab, ksize=GAUSSIAN_KERNEL, sigmaX=GAUSSIAN_STDDEV)
         fgMask = backSub.apply(processed_frame)
-        diffRatio = np.count_nonzero(fgMask)/fgMask.size        
-
-        # Run object detection in new thread every 2 seconds
-        returned_image, detections = detector.detectObjectsFromImage(
-                                        input_type="array",
-                                        input_image=frame_org, 
-                                        output_type="array", 
-                                        minimum_percentage_probability=MIN_PERCENTAGE_PROB,
-                                        custom_objects = custom)
-
+        diffRatio = np.count_nonzero(fgMask)/fgMask.size     
+        
+        # Run object detection in new thread every 1/5 second
+        if (frame_num-1)%6 == 0:
+            print(frame_num)
+            returned_image, detections = detector.detectObjectsFromImage(
+                                            input_type="array",
+                                            input_image=frame_org, 
+                                            output_type="array", 
+                                            minimum_percentage_probability=MIN_PERCENTAGE_PROB,
+                                            custom_objects = custom)
         
         # Display frame information
         fgMask = np.stack((fgMask,)*3, axis=-1)
@@ -100,6 +100,8 @@ def main():
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6 , (0,255,0), 2)
         cv2.putText(fgMask, "Motion detected", (10, fgMask.shape[0]-10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6 , (0,255,0), 2)
+        cv2.putText(fgMask, str(diffRatio>0.001), (fgMask.shape[1]-100, fgMask.shape[0]-10),
+            cv2.FONT_HERSHEY_SIMPLEX, 0.6 , (0,255,0), 2)
         cv2.putText(returned_image, "Object detected", (10, returned_image.shape[0]-10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6 , (0,255,0), 2)
             
