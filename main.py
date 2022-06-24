@@ -25,6 +25,7 @@ MIN_PERCENTAGE_PROB = 40
 DETECTION_SPEED = "normal" # Options: normal/fast/faster/fastest/flash
 ############################################################################
 
+# Calculate total area of detected objects
 def get_detection_area(detections):
     area = 0
     for object in detections:
@@ -32,6 +33,7 @@ def get_detection_area(detections):
         area += (x2-x1)*(y2-y1)
     return area
 
+# Determine if there is a potential congestion in the past second
 def detect_objects(detector, custom, motion_30frames, frame, results):
     returned_image, detections = detector.detectObjectsFromImage(
                                     input_type="array",
@@ -42,8 +44,8 @@ def detect_objects(detector, custom, motion_30frames, frame, results):
     results["returned_image"] = returned_image
     detection_area = get_detection_area(detections)
     results['congestion_5s'].pop(0)
-    if detection_area != 0:
-        print(sum(motion_30frames)/len(motion_30frames)/detection_area)
+    # Assume that there is a congestion if the mean amount of motion in 1 second is less than 
+    # 10% of area of detected objects
     if detection_area == 0 or sum(motion_30frames)/len(motion_30frames) > 0.1*detection_area:
         results['congestion_5s'].append(0)
     else:
@@ -51,10 +53,10 @@ def detect_objects(detector, custom, motion_30frames, frame, results):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='This program combines video stabilization, motion detection, and object \
+    parser = argparse.ArgumentParser(description='This program combines motion detection and object \
                                         detection to perform traffic video analysis.')
     parser.add_argument('--input', type=str, help='Path to input video.', default='video/combined.mp4')
-    parser.add_argument('--output', type=str, help='Path to save output.', default='output/combined1.mp4')
+    parser.add_argument('--output', type=str, help='Path to save output.', default='output/combined.mp4')
     args = parser.parse_args()
 
     # Set up OpenCV background subtractor
@@ -102,12 +104,15 @@ def main():
         cv2.rectangle(frame, (10, 2), (100,20), (255,255,255), -1)
         cv2.putText(frame, str(capture.get(cv2.CAP_PROP_POS_FRAMES)), (15, 15),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5 , (0,0,0))
+        # Assume that there is a congestion if >= 3 of the last 5 seconds has little motion relative to
+        # area of vehicles 
         cv2.putText(frame, "Congestion detected: "+str(sum(results['congestion_5s'])>=3), (10, fgMask.shape[0]-10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6 , (0,255,0), 2)
         
         # Write output frame to file
         fgMask = np.stack((fgMask,)*3, axis=-1)
-        info = np.concatenate((cv2.resize(fgMask, HALF_FRAME_SIZE),cv2.resize(results["returned_image"], HALF_FRAME_SIZE)), axis=1)
+        info = np.concatenate((cv2.resize(fgMask, HALF_FRAME_SIZE),cv2.resize(results["returned_image"], 
+                    HALF_FRAME_SIZE)), axis=1)
         output_frame = np.concatenate((frame, info), axis=0)
         out.write(output_frame)
 
