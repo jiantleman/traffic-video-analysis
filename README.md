@@ -2,7 +2,7 @@
 
 ## How to use
 
-See [`output/combined.mp4`] for a sample output of the program. 
+See [`output/combined.mp4`]() for a sample output of the program. 
 
 To run the program on your own video file:
 1. Install [Python 3.7.6](https://www.python.org/downloads/release/python-376/).
