@@ -11,6 +11,7 @@ import cv2
 from imageai.Detection import ObjectDetection
 import numpy as np
 import _thread
+import time
 
 ################################ Parameters ################################
 FRAME_SIZE = (640,360)
@@ -21,8 +22,8 @@ GAUSSIAN_KERNEL = (5,5)
 GAUSSIAN_STDDEV = 2
 BACK_SUB_THRESHOLD = 512
 # Object detection
-MIN_PERCENTAGE_PROB = 40
-DETECTION_SPEED = "normal" # Options: normal/fast/faster/fastest/flash
+MIN_PERCENTAGE_PROB = 20
+DETECTION_SPEED = "fastest" # Options: normal/fast/faster/fastest/flash
 ############################################################################
 
 # Calculate total area of detected objects
@@ -79,25 +80,28 @@ def main():
     if not capture.isOpened():
         print('Unable to open: ' + args.input)
         exit(0)
-    
+    frame_no = 0
+    start = time.time()    
     while True:
         ret, frame = capture.read()
         if frame is None:
             break
-        
+        frame_no += 1
         # Preprocessing and background subtraction
         frame = cv2.resize(frame, FRAME_SIZE)
         pp_frame = cv2.GaussianBlur(src=frame, ksize=GAUSSIAN_KERNEL, sigmaX=GAUSSIAN_STDDEV)
         fgMask = backSub.apply(pp_frame)
         
-        if capture.get(cv2.CAP_PROP_POS_FRAMES) == 1:
+        if frame_no == 1:
             results["returned_image"] = frame.copy()
             results["congestion_5s"] = [0]*5
         motion_30frames.append(np.count_nonzero(fgMask))
 
         # Run object detection in new thread every 30 frames
-        if (capture.get(cv2.CAP_PROP_POS_FRAMES)-1) % 30 == 0:
-            _thread.start_new_thread(detect_objects, (detector, custom, motion_30frames, frame, results))
+        if (frame_no-1) % 30 == 0:
+            #print(frame_no)
+            # _thread.start_new_thread(detect_objects, (detector, custom, motion_30frames, frame, results))
+            detect_objects(detector, custom, motion_30frames, frame, results)
             motion_30frames = []
 
         # Display information
@@ -123,7 +127,7 @@ def main():
         # keyboard = cv2.waitKey(30)
         # if keyboard == ord("q"):
         #     break
-
+    print(start-time.time())
 
 if __name__ == "__main__":
     main()
