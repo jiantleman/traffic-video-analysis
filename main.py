@@ -11,17 +11,22 @@ from skimage.exposure import rescale_intensity
 from skimage.measure import shannon_entropy
 
 S_THRESHOLD = 6.5
+FRAME_SIZE = (960,640)
 
 def main():
 
-    parser = argparse.ArgumentParser(description='This program combines motion detection and object \
-                                        detection to perform traffic video analysis.')
+    parser = argparse.ArgumentParser(description='This program performs congestion detection using image texture analysis.')
     parser.add_argument('--input', type=str, help='Path to input video.', default='video/demo.mp4')
+    parser.add_argument('--output', type=str, help='Path to save output video.', default='')
     args = parser.parse_args()
 
     capture = cv2.VideoCapture(args.input)
     bbox = None
     hist = [0]*30
+
+    if args.output != '':
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        out = cv2.VideoWriter(args.output, fourcc, 30, FRAME_SIZE)        
 
     if not capture.isOpened():
         print('Unable to open: ' + args.input)
@@ -32,7 +37,7 @@ def main():
         if frame is None:
             break
         
-        frame = cv2.resize(frame, (960,640))
+        frame = cv2.resize(frame, FRAME_SIZE)
 
         # Allow user to select region of interest
         if bbox == None:
@@ -62,12 +67,15 @@ def main():
         
         S = sum(energy)/4 + sum(entropy)/4
 
-        # Record S values in last 30 frames       
+        # Record S values in last 30 frames     
         hist.pop(0)
-        hist.append(S)
+        if S>S_THRESHOLD:  
+            hist.append(1)
+        else:
+            hist.append(0)
         
-        # Congestion detected if mean S is greater than threshold
-        if sum(hist)/30 >= S_THRESHOLD:
+        # Congestion detected if S exceeds the threshold in a large proportion of the last 30 frames
+        if sum(hist) >= 25:
             cv2.putText(frame, "Congestion detected", (10, frame.shape[0]-10),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6 , (0,0,255), 2)
         else:
@@ -87,6 +95,13 @@ def main():
         if keyboard == ord("s"):
             cv2.destroyWindow("Video")
             bbox = None
+
+        if args.output != '':
+            out.write(frame)
+    
+    capture.release()
+    if args.output != '':
+        out.release()
 
 if __name__ == "__main__":
     main()
