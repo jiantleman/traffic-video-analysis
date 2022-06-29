@@ -1,24 +1,24 @@
 # Traffic Video Analysis
 
-## How to use
+## How to Use
 
 To run the program on your own video file:
 1. Install [Git](https://git-scm.com/downloads) and [Python](https://www.python.org/downloads). 
 2. Open the terminal on your computer from the folder you would like to save the program in. Download this repository by running the following:
- ```
- git clone https://github.com/jiantleman/traffic-video-analysis
- ```
-2. Run the following commands in your terminal:
+    ```
+    git clone https://github.com/jiantleman/traffic-video-analysis
+    ```
+3. Run the following commands in your terminal:
     ```
     pip install numpy
     pip install opencv-python
     pip install scikit-image
     ```
-3. Run the following command in your terminal:
+4. Run the following command in your terminal:
     ```
     python main.py --input <path to video file>
     ```
-    You can also save the video output by running the following command:
+   You can also save the video output by running the following command:
     ```
     python main.py --input <path to video file> --output <path to save output>
     ```
